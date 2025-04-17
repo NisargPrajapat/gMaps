@@ -1,534 +1,3 @@
-// import React, { useState, useEffect, useRef } from 'react';
-// import { Navigation2, Save, Volume2, X, Car, Wallet as Walk, Bike, Download, Compass, CheckCircle } from 'lucide-react';
-// import SearchBox from '../components/SearchBox';
-// import type { Location, TravelMode } from '../types/navigation';
-// import { GoogleMap, DirectionsRenderer, Marker, Polyline } from '@react-google-maps/api';
-// import html2canvas from 'html2canvas';
-// import { toast } from 'react-hot-toast';
-// import { astar } from '../utils/astar';
-
-// const TRAVEL_MODES = {
-//   driving: google.maps.TravelMode.DRIVING,
-//   walking: google.maps.TravelMode.WALKING,
-//   cycling: google.maps.TravelMode.BICYCLING
-// };
-
-// const mapContainerStyle = {
-//   width: '100%',
-//   height: '100%',
-//   borderRadius: '0.5rem'
-// };
-
-// export default function NavigationPage() {
-//   const [locations, setLocations] = useState<Location[]>([]);
-//   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
-//   const [alternativeRoutes, setAlternativeRoutes] = useState<google.maps.DirectionsRoute[]>([]);
-//   const [astarPath, setAstarPath] = useState<google.maps.LatLng[]>([]);
-//   const [isNavigating, setIsNavigating] = useState(false);
-//   const [travelMode, setTravelMode] = useState<TravelMode>('driving');
-//   const [currentLocation, setCurrentLocation] = useState<google.maps.LatLngLiteral | null>(null);
-//   const [watchId, setWatchId] = useState<number | null>(null);
-//   const [isLoading, setIsLoading] = useState(true);
-//   const mapRef = useRef<google.maps.Map>();
-//   const directionsService = useRef<google.maps.DirectionsService>();
-//   const mapDivRef = useRef<HTMLDivElement>(null);
-
-//   useEffect(() => {
-//     const replayRoute = localStorage.getItem('replayRoute');
-//     if (replayRoute) {
-//       const route = JSON.parse(replayRoute);
-//       setLocations(route.locations);
-//       setTravelMode(route.mode);
-//       localStorage.removeItem('replayRoute');
-//     }
-  
-//     // Start watching location
-//     if (navigator.geolocation) {
-//       const id = navigator.geolocation.watchPosition(
-//         (position) => {
-//           const coords = {
-//             lat: position.coords.latitude,
-//             lng: position.coords.longitude
-//           };
-//           setCurrentLocation(coords);
-//           setIsLoading(false);
-//         },
-//         (error) => {
-//           console.error('Error tracking location:', error);
-//           switch (error.code) {
-//             case error.PERMISSION_DENIED:
-//               toast.error('User denied the request for Geolocation.');
-//               break;
-//             case error.POSITION_UNAVAILABLE:
-//               toast.error('Location information is unavailable.');
-//               break;
-//             case error.TIMEOUT:
-//               toast.error('The request to get user location timed out.');
-//               break;
-//             default:
-//               toast.error('An unknown error occurred.');
-//               break;
-//           }
-//           setIsLoading(false);
-//         },
-//         { enableHighAccuracy: true }
-//       );
-//       setWatchId(id);
-//     } else {
-//       toast.error('Geolocation is not supported by this browser.');
-//       setIsLoading(false);
-//     }
-  
-//     return () => {
-//       if (watchId) {
-//         navigator.geolocation.clearWatch(watchId);
-//       }
-//     };
-//   }, []);
-
-//   const onMapLoad = (map: google.maps.Map) => {
-//     mapRef.current = map;
-//     directionsService.current = new google.maps.DirectionsService();
-//   };
-
-//   const calculateAstarPath = () => {
-//     if (locations.length < 2) return;
-
-//     const grid = Array(100).fill(null).map(() => Array(100).fill(false));
-//     const path: [number, number][] = [];
-
-//     for (let i = 0; i < locations.length - 1; i++) {
-//       const start = locations[i].coordinates;
-//       const end = locations[i + 1].coordinates;
-
-//       const startGrid: [number, number] = [
-//         Math.floor((start[0] + 180) * (grid.length / 360)),
-//         Math.floor((start[1] + 90) * (grid[0].length / 180))
-//       ];
-//       const endGrid: [number, number] = [
-//         Math.floor((end[0] + 180) * (grid.length / 360)),
-//         Math.floor((end[1] + 90) * (grid[0].length / 180))
-//       ];
-
-//       const segment = astar(startGrid, endGrid, grid);
-//       path.push(...segment);
-//     }
-
-//     // Convert grid coordinates back to LatLng
-//     const astarLatLngs = path.map(point => new google.maps.LatLng(
-//       (point[1] * (180 / grid[0].length)) - 90,
-//       (point[0] * (360 / grid.length)) - 180
-//     ));
-
-//     setAstarPath(astarLatLngs);
-//   };
-
-//   const calculateRoute = async () => {
-//     if (locations.length < 2 || !directionsService.current) return;
-
-//     try {
-//       const origin = locations[0];
-//       const destination = locations[locations.length - 1];
-//       const waypoints = locations.slice(1, -1).map(location => ({
-//         location: { lat: location.coordinates[1], lng: location.coordinates[0] },
-//         stopover: true
-//       }));
-
-//       const result = await directionsService.current.route({
-//         origin: { lat: origin.coordinates[1], lng: origin.coordinates[0] },
-//         destination: { lat: destination.coordinates[1], lng: destination.coordinates[0] },
-//         waypoints,
-//         travelMode: TRAVEL_MODES[travelMode],
-//         provideRouteAlternatives: true
-//       });
-
-//       setDirections(result);
-//       setAlternativeRoutes(result.routes.slice(1));
-//       calculateAstarPath();
-
-//       if (mapRef.current) {
-//         const bounds = new google.maps.LatLngBounds();
-//         result.routes[0].legs.forEach(leg => {
-//           bounds.extend(leg.start_location);
-//           bounds.extend(leg.end_location);
-//         });
-//         mapRef.current.fitBounds(bounds);
-//       }
-//     } catch (error) {
-//       console.error('Error calculating route:', error);
-//       toast.error('Error calculating route. Please try again.');
-//     }
-//   };
-
-//   const addLocation = (location: Location) => {
-//     const newLocation = { ...location, id: crypto.randomUUID() };
-//     setLocations([...locations, newLocation]);
-//   };
-
-//   const removeLocation = (id: string) => {
-//     setLocations(locations.filter(loc => loc.id !== id));
-//   };
-
-//   useEffect(() => {
-//     if (locations.length >= 2) {
-//       calculateRoute();
-//     }
-//   }, [locations, travelMode]);
-
-//   const startNavigation = () => {
-//     setIsNavigating(true);
-//     if ('speechSynthesis' in window) {
-//       const utterance = new SpeechSynthesisUtterance('Starting navigation');
-//       window.speechSynthesis.speak(utterance);
-//     }
-//   };
-
-//   const saveRoute = () => {
-//     if (!directions) return;
-
-//     const route = directions.routes[0];
-//     const savedRoute = {
-//       id: crypto.randomUUID(),
-//       locations,
-//       distance: route.legs.reduce((total, leg) => total + (leg.distance?.value || 0), 0),
-//       duration: route.legs.reduce((total, leg) => total + (leg.duration?.value || 0), 0),
-//       created_at: new Date().toISOString(),
-//       mode: travelMode
-//     };
-
-//     const savedRoutes = JSON.parse(localStorage.getItem('savedRoutes') || '[]');
-//     localStorage.setItem('savedRoutes', JSON.stringify([...savedRoutes, savedRoute]));
-//     toast.success('Route saved successfully!');
-//   };
-
-//   // const downloadMap = async () => {
-//   //   if (!mapDivRef.current || !currentLocation) return;
-
-//   //   try {
-//   //     //toast.loading('Preparing map for download...');
-
-//   //     const center = `${currentLocation.lat},${currentLocation.lng}`;
-//   //     const zoom = 14;
-//   //     const size = '600x400';
-//   //     const mapType = 'roadmap';
-//   //     const markers = locations.map(location => `markers=color:red|label:${location.name}|${location.coordinates[1]},${location.coordinates[0]}`).join('&');
-//   //     const apiKey = 'AIzaSyC1FtH7m_1deIDYCjLBgNrYHVBZu0VXXRo'; 
-
-//   //     const url = `https://maps.googleapis.com/maps/api/staticmap?center=${center}&zoom=${zoom}&size=${size}&maptype=${mapType}&${markers}&key=${apiKey}`;
-
-//   //     const link = document.createElement('a');
-//   //     link.download = 'navigation-map.png';
-//   //     link.href = url;
-//   //     link.click();
-
-//   //     toast.success('Map downloaded successfully!');
-//   //   } catch (error) {
-//   //     console.error('Error downloading map:', error);
-//   //     toast.error('Error downloading map. Please try again.');
-//   //   }
-//   // };
-
-//   const downloadMap = async () => {
-//     if (!mapDivRef.current) {
-//       alert("Map container not found!");
-//       return;
-//     }
-  
-//     try {
-//       // Capture the screenshot of the map container using the ref.
-//       const canvas = await html2canvas(mapDivRef.current, {
-//         useCORS: true,
-//         scale: 2, // Increase scale for better resolution
-//       });
-  
-//       // Convert the canvas to a Base64 image.
-//       const base64Image = canvas.toDataURL("image/png");
-  
-//       // Trigger a client-side download.
-//       const link = document.createElement("a");
-//       link.href = base64Image;
-//       link.download = "map_screenshot.png";
-//       link.click();
-  
-//       // Send the Base64 image to the backend for saving.
-//       const response = await fetch("http://localhost:5000/save-map", {
-//         method: "POST",
-//         headers: {
-//           "Authorization": `Bearer ${localStorage.getItem("token")}`,
-//           "Content-Type": "application/json",
-//         },
-//         body: JSON.stringify({ mapImage: base64Image }),
-//       });
-  
-//       let result;
-//       try {
-//         result = await response.json();
-//       } catch (err) {
-//         console.error("Error parsing JSON response:", err);
-//         result = {};
-//       }
-  
-//       if (result.message === "Map saved successfully!") {
-//         alert("Map downloaded and saved successfully!");
-//       } else {
-//         alert("Map downloaded but there was a problem saving it in the database.");
-//       }
-//     } catch (error) {
-//       console.error("Error taking screenshot:", error);
-//       alert("Error taking screenshot. See console for details.");
-//     }
-//   };
-  
-
-
-//   return (
-//     <div className="h-[calc(100vh-4rem)]">
-//       {isLoading ? (
-//         <div className="flex items-center justify-center h-full">
-//           <div className="loader">Loading...</div>
-//         </div>
-//       ) : (
-//         <div className="grid grid-cols-3 gap-4 h-full">
-//           <div className="col-span-1 bg-white p-4 rounded-lg shadow overflow-y-auto">
-//             <div className="mb-4">
-//               <h3 className="text-sm font-medium text-gray-700 mb-2">Travel Mode</h3>
-//               <div className="flex space-x-2">
-//                 <button
-//                   onClick={() => setTravelMode('driving')}
-//                   className={`flex items-center space-x-2 px-3 py-2 rounded ${
-//                     travelMode === 'driving' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100'
-//                   }`}
-//                 >
-//                   <Car size={20} />
-//                   <span>Drive</span>
-//                 </button>
-//                 <button
-//                   onClick={() => setTravelMode('walking')}
-//                   className={`flex items-center space-x-2 px-3 py-2 rounded ${
-//                     travelMode === 'walking' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100'
-//                   }`}
-//                 >
-//                   <Walk size={20} />
-//                   <span>Walk</span>
-//                 </button>
-//                 <button
-//                   onClick={() => setTravelMode('bicycling')}
-//                   className={`flex items-center space-x-2 px-3 py-2 rounded ${
-//                     travelMode === 'bicycling' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100'
-//                   }`}
-//                 >
-//                   <Bike size={20} />
-//                   <span>Bicycling</span>
-//                 </button>
-//               </div>
-//             </div>
-
-//             {currentLocation && (
-//               <div className="mb-4 p-4 bg-blue-50 rounded">
-//                 <div className="flex items-center space-x-2">
-//                   <Compass size={20} className="text-blue-600" />
-//                   <h3 className="font-semibold">Current Location</h3>
-//                 </div>
-//                 <p className="text-sm text-gray-600 mt-1">
-//                   Lat: {currentLocation.lat.toFixed(4)}, Lng: {currentLocation.lng.toFixed(4)}
-//                 </p>
-//               </div>
-//             )}
-            
-//             <div className="space-y-4">
-//               {locations.map((location, index) => (
-//                 <div key={location.id} className="flex items-center space-x-2 p-2 bg-gray-50 rounded">
-//                   <span className="font-medium">{index + 1}.</span>
-//                   <span className="flex-1">{location.name}</span>
-//                   <button
-//                     onClick={() => removeLocation(location.id)}
-//                     className="text-red-500 hover:text-red-700"
-//                   >
-//                     <X size={16} />
-//                   </button>
-//                 </div>
-//               ))}
-              
-//               <div className="pt-4">
-//                 <SearchBox
-//                   onSelect={addLocation}
-//                   placeholder="Add destination..."
-//                 />
-//               </div>
-//             </div>
-
-//             {directions && (
-//               <div className="mt-6 space-y-4">
-//                 <div className="p-4 bg-blue-50 rounded">
-//                   <h3 className="font-semibold">Main Route</h3>
-//                   <p>Distance: {(directions.routes[0].legs.reduce((total, leg) => total + (leg.distance?.value || 0), 0) / 1000).toFixed(1)} km</p>
-//                   <p>Duration: {Math.round(directions.routes[0].legs.reduce((total, leg) => total + (leg.duration?.value || 0), 0) / 60)} minutes</p>
-//                 </div>
-
-//                 {alternativeRoutes.length > 0 && (
-//                   <div className="space-y-2">
-//                     <h4 className="font-medium">Alternative Routes</h4>
-//                     {alternativeRoutes.map((route, index) => (
-//                       <div key={index} className="p-3 bg-gray-50 rounded">
-//                         <p>Distance: {(route.legs.reduce((total, leg) => total + (leg.distance?.value || 0), 0) / 1000).toFixed(1)} km</p>
-//                         <p>Duration: {Math.round(route.legs.reduce((total, leg) => total + (leg.duration?.value || 0), 0) / 60)} minutes</p>
-//                       </div>
-//                     ))}
-//                   </div>
-//                 )}
-
-//                 <div className="flex space-x-2">
-//                   <button
-//                     onClick={startNavigation}
-//                     className="flex-1 flex items-center justify-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-//                   >
-//                     <Navigation2 size={20} />
-//                     <span>Start Navigation</span>
-//                   </button>
-                  
-//                   <button
-//                     onClick={saveRoute}
-//                     className="flex items-center justify-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
-//                   >
-//                     <Save size={20} />
-//                   </button>
-
-//                   <button
-//                     onClick={downloadMap}
-//                     className="flex items-center justify-center space-x-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-//                   >
-//                     <Download size={20} />
-//                   </button>
-//                 </div>
-//               </div>
-//             )}
-//           </div>
-
-//           <div className="col-span-2 relative" ref={mapDivRef}>
-//             {currentLocation && (
-//               <GoogleMap
-//                 mapContainerStyle={mapContainerStyle}
-//                 zoom={14}
-//                 center={currentLocation}
-//                 onLoad={onMapLoad}
-//                 options={{
-//                   styles: [
-//                     {
-//                       featureType: "poi",
-//                       elementType: "labels",
-//                       stylers: [{ visibility: "off" }]
-//                     }
-//                   ],
-//                   disableDefaultUI: true,
-//                   zoomControl: true,
-//                   mapTypeControl: false,
-//                   streetViewControl: false,
-//                   fullscreenControl: true
-//                 }}
-//               >
-//                 {currentLocation && (
-//                   <Marker
-//                     position={currentLocation}
-//                     icon={{
-//                       path: google.maps.SymbolPath.CIRCLE,
-//                       scale: 8,
-//                       fillColor: "#3b82f6",
-//                       fillOpacity: 1,
-//                       strokeColor: "#ffffff",
-//                       strokeWeight: 2,
-//                     }}
-//                   />
-//                 )}
-
-//                 {astarPath.length > 0 && (
-//                   <Polyline
-//                     path={astarPath}
-//                     options={{
-//                       geodesic: true,
-//                       strokeColor: '#3b82f6',
-//                       strokeOpacity: 1.0,
-//                       strokeWeight: 4,
-//                     }}
-//                   />
-//                 )}
-
-//                 {directions && (
-//                   <>
-//                     <DirectionsRenderer
-//                       directions={directions}
-//                       options={{
-//                         // suppressMarkers: true,
-//                         polylineOptions: {
-//                           strokeColor: "#3b82f6",
-//                           strokeWeight: 4,
-//                           strokeOpacity: 0.7
-//                         }
-//                       }}
-//                     />
-//                     {alternativeRoutes.map((route, index) => (
-//                       <DirectionsRenderer
-//                         key={index}
-//                         directions={{
-//                           ...directions,
-//                           routes: [route]
-//                         }}
-//                         options={{
-//                           // suppressMarkers: true,
-//                           polylineOptions: {
-//                             strokeColor: "#ff0000",
-//                             strokeWeight: 3,
-//                             strokeOpacity: 0.5
-//                           }
-//                         }}
-//                       />
-//                     ))}
-//                   </>
-//                 )}
-
-//                 {locations.map((location, index) => (
-//                   <Marker
-//                     key={location.id}
-//                     position={{ lat: location.coordinates[1], lng: location.coordinates[0] }}
-//                     icon={{
-//                       path: google.maps.SymbolPath.CIRCLE,
-//                       scale: 10,
-//                       fillColor: index === 0 ? "#22c55e" : 
-//                                 index === locations.length - 1 ? "#ef4444" : 
-//                                 "#3b82f6",
-//                       fillOpacity: 1,
-//                       strokeColor: "#ffffff",
-//                       strokeWeight: 2,
-//                     }}
-//                     label={{
-//                       text: (index + 1).toString(),
-//                       color: "#ffffff",
-//                       fontSize: "12px",
-//                       fontWeight: "bold"
-//                     }}
-//                   />
-//                 ))}
-//               </GoogleMap>
-//             )}
-
-//             {isNavigating && (
-//               <div className="absolute bottom-4 left-4 right-4 bg-white p-4 rounded-lg shadow-lg">
-//                 <div className="flex items-center justify-between">
-//                   <div>
-//                     <h3 className="font-semibold">Turn-by-turn Navigation</h3>
-//                     <p className="text-gray-600">Next instruction will be spoken...</p>
-//                   </div>
-//                   <button className="p-2 hover:bg-gray-100 rounded-full">
-//                     <Volume2 size={24} />
-//                   </button>
-//                 </div>
-//               </div>
-//             )}
-//           </div>
-//         </div>
-//       )}
-//     </div>
-//   );
-// }
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
@@ -542,7 +11,7 @@ import {
   Download,
   Compass,
   Menu,
-} from 'lucide-react';
+} from "lucide-react";
 import SearchBox from '../components/SearchBox';
 import type { Location, TravelMode } from '../types/navigation';
 import {
@@ -599,7 +68,7 @@ export default function NavigationPage() {
   const navigationWatchId = useRef<number | null>(null);
 
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: "AIzaSyC1FtH7m_1deIDYCjLBgNrYHVBZu0VXXRo",
+    googleMapsApiKey: "AIzaSyDzmXGFKWclmVQNOcSpatYo_OKFdv0_YNY",
     libraries,
   });
 
@@ -613,9 +82,10 @@ export default function NavigationPage() {
     ],
     disableDefaultUI: true,
     zoomControl: true,
-    mapTypeControl: false,
-    streetViewControl: false,
+    mapTypeControl: true,
+    streetViewControl: true,
     fullscreenControl: true,
+    rotateControl: true
   }), []);
 
   useEffect(() => {
@@ -642,7 +112,7 @@ export default function NavigationPage() {
           handleLocationError(error);
           setIsLoading(false);
         },
-        { 
+        {
           enableHighAccuracy: true,
           timeout: 15000,
           maximumAge: 0
@@ -791,16 +261,16 @@ export default function NavigationPage() {
     const speakInstruction = (instruction: string) => {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
-        
+
         const cleanInstruction = instruction.replace(/<[^>]*>/g, '');
         const utterance = new SpeechSynthesisUtterance(cleanInstruction);
-        
+
         const voices = window.speechSynthesis.getVoices();
         const englishVoice = voices.find(voice => voice.lang.startsWith('en-'));
         if (englishVoice) {
           utterance.voice = englishVoice;
         }
-        
+
         utterance.rate = 0.9;
         window.speechSynthesis.speak(utterance);
       }
@@ -840,7 +310,7 @@ export default function NavigationPage() {
         console.error('Error tracking location:', error);
         handleLocationError(error);
       },
-      { 
+      {
         enableHighAccuracy: true,
         timeout: 15000,
         maximumAge: 0
@@ -917,7 +387,7 @@ export default function NavigationPage() {
 
       const imageUrl = canvas.toDataURL('image/png');
       const token = localStorage.getItem('token');
-      
+
       if (!token) {
         toast.error('Please log in to save maps');
         toast.dismiss(loadingToast);
@@ -972,7 +442,7 @@ export default function NavigationPage() {
 
   return (
     <div className="h-[calc(100vh-4rem)] relative">
-      <div className="h-full flex flex-col md:flex-row">
+      <div className="h-full flex flex-col md:flex-row gap-4">
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className="md:hidden fixed top-4 left-4 z-50 bg-white p-2 rounded-full shadow-lg"
@@ -988,8 +458,9 @@ export default function NavigationPage() {
           h-full
           bg-white md:translate-x-0
           overflow-y-auto
-          shadow-lg md:shadow-none
-        `}>
+          shadow-lg md:shadow-none rounded-lg
+        `}
+        >
           <div className="p-4">
             <div className="mb-4">
               <h3 className="text-sm font-medium text-gray-700 mb-2">
@@ -1000,11 +471,10 @@ export default function NavigationPage() {
                   <button
                     key={key}
                     onClick={() => setTravelMode(key as TravelMode)}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded ${
-                      travelMode === key
+                    className={`flex items-center space-x-2 px-3 py-2 rounded ${travelMode === key
                         ? 'bg-blue-100 text-blue-700'
                         : 'bg-gray-100'
-                    }`}
+                      }`}
                   >
                     <Icon size={20} />
                     <span>{label}</span>
@@ -1193,7 +663,7 @@ export default function NavigationPage() {
                         polylineOptions: {
                           strokeColor: '#ff0000',
                           strokeWeight: 3,
-                          strokeOpacity: 0.5,
+                          strokeOpacity: 0.35,
                         },
                       }}
                     />
@@ -1215,8 +685,8 @@ export default function NavigationPage() {
                       index === 0
                         ? '#22c55e'
                         : index === locations.length - 1
-                        ? '#ef4444'
-                        : '#3b82f6',
+                          ? '#ef4444'
+                          : '#3b82f6',
                     fillOpacity: 1,
                     strokeColor: '#ffffff',
                     strokeWeight: 2,
@@ -1241,7 +711,7 @@ export default function NavigationPage() {
                     Next instruction will be spoken...
                   </p>
                 </div>
-                <button 
+                <button
                   onClick={() => window.speechSynthesis.cancel()}
                   className="p-2 hover:bg-gray-100 rounded-full"
                 >

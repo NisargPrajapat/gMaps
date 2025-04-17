@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Compass, MapPin, Navigation, Wifi } from 'lucide-react';
+import { Compass, MapPin, Navigation, Wifi, User } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 interface LocationInfo {
@@ -12,10 +12,12 @@ interface LocationInfo {
     speed: number | null;
   };
   timestamp: number;
+  address: string | null;
 }
 
 interface UserProfile {
   address: string;
+  name: string;
 }
 
 export default function Location() {
@@ -53,6 +55,23 @@ export default function Location() {
     }
   };
 
+  const getAddressFromCoords = async (latitude: number, longitude: number): Promise<string> => {
+    try {
+      const geocoder = new google.maps.Geocoder();
+      const response = await geocoder.geocode({
+        location: { lat: latitude, lng: longitude }
+      });
+
+      if (response.results[0]) {
+        return response.results[0].formatted_address;
+      }
+      return 'Address not found';
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      return 'Error getting address';
+    }
+  };
+
   const initializeLocationTracking = () => {
     if (!navigator.geolocation) {
       setError('Geolocation is not supported by your browser');
@@ -61,7 +80,12 @@ export default function Location() {
     }
 
     const watchId = navigator.geolocation.watchPosition(
-      (position) => {
+      async (position) => {
+        const address = await getAddressFromCoords(
+          position.coords.latitude,
+          position.coords.longitude
+        );
+
         setLocationInfo({
           coords: {
             latitude: position.coords.latitude,
@@ -72,6 +96,7 @@ export default function Location() {
             speed: position.coords.speed,
           },
           timestamp: position.timestamp,
+          address
         });
         setLoading(false);
         setError(null);
@@ -126,78 +151,110 @@ export default function Location() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">
-          Current Location Information
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+          Location Information
         </h1>
-        <p className="text-gray-600">
-          Real-time location data from your device's GPS
+        <p className="text-gray-600 dark:text-gray-300">
+          Compare your registered and current location
         </p>
       </div>
 
-      {userProfile?.address && (
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div className="grid md:grid-cols-2 gap-6 mb-8">
+        {/* Registered Address Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
           <div className="flex items-center space-x-3 mb-4">
-            <MapPin className="w-6 h-6 text-blue-600" />
-            <h2 className="text-xl font-bold">Registered Address</h2>
+            <User className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-xl font-bold dark:text-white">Registered Address</h2>
           </div>
-          <p className="text-lg text-gray-700">{userProfile.address}</p>
+          {userProfile ? (
+            <div className="space-y-2">
+              <p className="text-lg text-gray-700 dark:text-gray-300">
+                <span className="font-semibold">Name:</span> {userProfile.name}
+              </p>
+              <p className="text-lg text-gray-700 dark:text-gray-300">
+                <span className="font-semibold">Address:</span> {userProfile.address}
+              </p>
+            </div>
+          ) : (
+            <p className="text-gray-500 dark:text-gray-400">Loading profile...</p>
+          )}
         </div>
-      )}
+
+        {/* Current Location Address Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <MapPin className="w-6 h-6 text-green-600 dark:text-green-400" />
+            <h2 className="text-xl font-bold dark:text-white">Current Location</h2>
+          </div>
+          {locationInfo ? (
+            <div className="space-y-2">
+              <p className="text-lg text-gray-700 dark:text-gray-300">
+                <span className="font-semibold">Address:</span> {locationInfo.address}
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Last updated: {new Date(locationInfo.timestamp).toLocaleTimeString()}
+              </p>
+            </div>
+          ) : (
+            <p className="text-gray-500 dark:text-gray-400">Getting current location...</p>
+          )}
+        </div>
+      </div>
 
       {locationInfo && (
         <div className="grid md:grid-cols-2 gap-6">
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
             <div className="flex items-center space-x-3 mb-6">
-              <MapPin className="w-6 h-6 text-blue-600" />
-              <h2 className="text-xl font-bold">Coordinates</h2>
+              <MapPin className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <h2 className="text-xl font-bold dark:text-white">Coordinates</h2>
             </div>
             <div className="space-y-4">
               <div>
-                <p className="text-sm text-gray-500">Latitude</p>
-                <p className="font-mono text-lg">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Latitude</p>
+                <p className="font-mono text-lg dark:text-white">
                   {locationInfo.coords.latitude.toFixed(6)}°
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Longitude</p>
-                <p className="font-mono text-lg">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Longitude</p>
+                <p className="font-mono text-lg dark:text-white">
                   {locationInfo.coords.longitude.toFixed(6)}°
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Accuracy</p>
-                <p className="font-mono text-lg">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Accuracy</p>
+                <p className="font-mono text-lg dark:text-white">
                   ±{locationInfo.coords.accuracy.toFixed(1)} meters
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
             <div className="flex items-center space-x-3 mb-6">
-              <Compass className="w-6 h-6 text-green-600" />
-              <h2 className="text-xl font-bold">Movement Data</h2>
+              <Compass className="w-6 h-6 text-green-600 dark:text-green-400" />
+              <h2 className="text-xl font-bold dark:text-white">Movement Data</h2>
             </div>
             <div className="space-y-4">
               <div>
-                <p className="text-sm text-gray-500">Altitude</p>
-                <p className="font-mono text-lg">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Altitude</p>
+                <p className="font-mono text-lg dark:text-white">
                   {locationInfo.coords.altitude
                     ? `${locationInfo.coords.altitude.toFixed(1)} meters`
                     : 'Not available'}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Heading</p>
-                <p className="font-mono text-lg">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Heading</p>
+                <p className="font-mono text-lg dark:text-white">
                   {locationInfo.coords.heading
                     ? `${locationInfo.coords.heading.toFixed(1)}°`
                     : 'Not available'}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Speed</p>
-                <p className="font-mono text-lg">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Speed</p>
+                <p className="font-mono text-lg dark:text-white">
                   {locationInfo.coords.speed
                     ? `${(locationInfo.coords.speed * 3.6).toFixed(1)} km/h`
                     : 'Not available'}
@@ -206,20 +263,20 @@ export default function Location() {
             </div>
           </div>
 
-          <div className="md:col-span-2 bg-white rounded-lg shadow-md p-6">
+          <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
             <div className="flex items-center space-x-3 mb-6">
-              <Wifi className="w-6 h-6 text-purple-600" />
-              <h2 className="text-xl font-bold">Additional Information</h2>
+              <Wifi className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              <h2 className="text-xl font-bold dark:text-white">Signal Information</h2>
             </div>
             <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <p className="text-sm text-gray-500">Last Updated</p>
-                <p className="font-mono text-lg">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Last Updated</p>
+                <p className="font-mono text-lg dark:text-white">
                   {new Date(locationInfo.timestamp).toLocaleTimeString()}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Location Quality</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Location Quality</p>
                 <div className="flex items-center space-x-2">
                   <span
                     className={`inline-block w-3 h-3 rounded-full ${
@@ -230,7 +287,7 @@ export default function Location() {
                         : 'bg-red-500'
                     }`}
                   />
-                  <span className="font-medium">
+                  <span className="font-medium dark:text-white">
                     {locationInfo.coords.accuracy <= 10
                       ? 'Excellent'
                       : locationInfo.coords.accuracy <= 30

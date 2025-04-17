@@ -8,15 +8,20 @@ const router = express.Router();
 // Register
 router.post('/register', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, name, phone, address } = req.body;
 
     // Validate input
-    if (!email || !password) {
-      return res.status(400).json({ message: 'All fields are required' });
+    if (!email || !password || !name || !address) {
+      return res.status(400).json({ message: 'All required fields must be provided' });
+    }
+
+    // Validate name format
+    if (!/^[A-Za-z\s]+$/.test(name)) {
+      return res.status(400).json({ message: 'Name can only contain letters and spaces' });
     }
 
     // Check if user exists
-    let user = await User.findOne({ email }).maxTimeMS(10000); // Add timeout
+    let user = await User.findOne({ email }).maxTimeMS(10000);
     if (user) {
       return res.status(400).json({ message: 'User already exists' });
     }
@@ -29,6 +34,9 @@ router.post('/register', async (req, res) => {
     user = new User({
       email,
       password: hashedPassword,
+      name: name.trim(),
+      phone: phone ? phone.trim() : undefined,
+      address: address.trim()
     });
 
     await user.save();
@@ -40,9 +48,12 @@ router.post('/register', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    res.json({ token });
+    res.status(201).json({ token });
   } catch (error) {
     console.error('Registration Error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: Object.values(error.errors).map(err => err.message).join(', ') });
+    }
     res.status(500).json({ message: 'Server error during registration' });
   }
 });

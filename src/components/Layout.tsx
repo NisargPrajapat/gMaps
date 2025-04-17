@@ -1,178 +1,3 @@
-// // import React from 'react';
-// // import { Outlet, Link, useNavigate } from 'react-router-dom';
-// // import { Map, Navigation, Home, MapPin, User, LogOut } from 'lucide-react';
-
-// // export default function Layout() {
-// //   const navigate = useNavigate();
-
-// //   const handleLogout = () => {
-// //     localStorage.removeItem('token');
-// //     navigate('/login');
-// //   };
-
-// //   return (
-// //     <div className="min-h-screen bg-gray-50">
-// //       <nav className="bg-white shadow-lg sticky top-0 z-50">
-// //         <div className="max-w-7xl mx-auto px-4">
-// //           <div className="flex justify-between h-16">
-// //             <div className="flex space-x-8">
-// //               <Link
-// //                 to="/"
-// //                 className="flex items-center space-x-2 text-gray-900 hover:text-blue-600"
-// //               >
-// //                 <Home size={24} />
-// //                 <span className="font-semibold">Home</span>
-// //               </Link>
-// //               <Link
-// //                 to="/navigation"
-// //                 className="flex items-center space-x-2 text-gray-900 hover:text-blue-600"
-// //               >
-// //                 <Navigation size={24} />
-// //                 <span className="font-semibold">Navigate</span>
-// //               </Link>
-// //               <Link
-// //                 to="/nearby"
-// //                 className="flex items-center space-x-2 text-gray-900 hover:text-blue-600"
-// //               >
-// //                 <MapPin size={24} />
-// //                 <span className="font-semibold">Nearby</span>
-// //               </Link>
-// //               <Link
-// //                 to="/summary"
-// //                 className="flex items-center space-x-2 text-gray-900 hover:text-blue-600"
-// //               >
-// //                 <Map size={24} />
-// //                 <span className="font-semibold">Summary</span>
-// //               </Link>
-// //             </div>
-// //             <div className="flex items-center space-x-4">
-// //               <Link
-// //                 to="/profile"
-// //                 className="flex items-center space-x-2 text-gray-900 hover:text-blue-600"
-// //               >
-// //                 <User size={24} />
-// //                 <span className="font-semibold">Profile</span>
-// //               </Link>
-// //               <button
-// //                 onClick={handleLogout}
-// //                 className="flex items-center space-x-2 text-red-600 hover:text-red-700"
-// //               >
-// //                 <LogOut size={24} />
-// //                 <span className="font-semibold">Logout</span>
-// //               </button>
-// //             </div>
-// //           </div>
-// //         </div>
-// //       </nav>
-// //       <main className="max-w-7xl mx-auto px-4 py-6">
-// //         <Outlet />
-// //       </main>
-// //     </div>
-// //   );
-// // }
-
-// import React from 'react';
-// import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-// import { Map, Navigation, Home, MapPin, User, LogOut, Menu, X } from 'lucide-react';
-
-// export default function Layout() {
-//   const navigate = useNavigate();
-//   const location = useLocation();
-//   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-
-//   const handleLogout = () => {
-//     localStorage.removeItem('token');
-//     navigate('/login');
-//   };
-
-//   const NavLink = ({ to, icon: Icon, label }: { to: string; icon: React.ElementType; label: string }) => {
-//     const isActive = location.pathname === to;
-//     return (
-//       <Link
-//         to={to}
-//         onClick={() => setIsMenuOpen(false)}
-//         className={`flex items-center space-x-2 p-3 rounded-lg transition-colors ${
-//           isActive 
-//             ? 'bg-blue-100 text-blue-700' 
-//             : 'text-gray-700 hover:bg-gray-100'
-//         }`}
-//       >
-//         <Icon size={20} />
-//         <span className="font-medium">{label}</span>
-//       </Link>
-//     );
-//   };
-
-//   return (
-//     <div className="min-h-screen bg-gray-50">
-//       {/* Mobile Header */}
-//       <header className="lg:hidden bg-white shadow-sm fixed top-0 left-0 right-0 z-50">
-//         <div className="flex items-center justify-between p-4">
-//           <Link to="/" className="flex items-center space-x-2">
-//             <Home size={24} />
-//             <span className="font-semibold">Route Planner</span>
-//           </Link>
-//           <button
-//             onClick={() => setIsMenuOpen(!isMenuOpen)}
-//             className="p-2 rounded-lg hover:bg-gray-100"
-//           >
-//             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-//           </button>
-//         </div>
-//       </header>
-
-//       {/* Mobile Menu */}
-//       {isMenuOpen && (
-//         <div className="lg:hidden fixed inset-0 z-40 bg-white pt-16">
-//           <nav className="p-4 space-y-2">
-//             <NavLink to="/navigation" icon={Navigation} label="Navigate" />
-//             <NavLink to="/nearby" icon={MapPin} label="Nearby" />
-//             <NavLink to="/summary" icon={Map} label="Summary" />
-//             <NavLink to="/profile" icon={User} label="Profile" />
-//             <button
-//               onClick={handleLogout}
-//               className="flex items-center space-x-2 w-full p-3 text-red-600 hover:bg-red-50 rounded-lg"
-//             >
-//               <LogOut size={20} />
-//               <span className="font-medium">Logout</span>
-//             </button>
-//           </nav>
-//         </div>
-//       )}
-
-//       {/* Desktop Navigation */}
-//       <nav className="hidden lg:block bg-white shadow-lg fixed w-full z-50">
-//         <div className="max-w-7xl mx-auto px-4">
-//           <div className="flex justify-between h-16">
-//             <div className="flex space-x-8">
-//               <NavLink to="/navigation" icon={Navigation} label="Navigate" />
-//               <NavLink to="/nearby" icon={MapPin} label="Nearby" />
-//               <NavLink to="/summary" icon={Map} label="Summary" />
-//             </div>
-//             <div className="flex items-center space-x-4">
-//               <NavLink to="/profile" icon={User} label="Profile" />
-//               <button
-//                 onClick={handleLogout}
-//                 className="flex items-center space-x-2 text-red-600 hover:text-red-700 p-3"
-//               >
-//                 <LogOut size={20} />
-//                 <span className="font-medium">Logout</span>
-//               </button>
-//             </div>
-//           </div>
-//         </div>
-//       </nav>
-
-//       <main className="pt-16 lg:pt-20 pb-6 px-4">
-//         <div className="max-w-7xl mx-auto">
-//           <Outlet />
-//         </div>
-//       </main>
-//     </div>
-//   );
-// }
-
-
 
 import React, { useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
@@ -191,7 +16,7 @@ export default function Layout() {
   };
 
   const menuItems = [
-    { path: '/', icon: Home, label: 'Home' },
+    // { path: '/', icon: Home, label: 'Home' },
     { path: '/navigation', icon: Navigation, label: 'Navigate' },
     { path: '/nearby', icon: MapPin, label: 'Nearby' },
     { path: '/summary', icon: Map, label: 'Summary' },
@@ -227,7 +52,7 @@ export default function Layout() {
 
       {/* Navigation */}
       <nav className={`
-        fixed top-0 left-0 w-full h-full md:h-auto md:relative
+        sticky top-0 left-0 w-full h-full
         bg-white dark:bg-gray-800 shadow-lg z-40
         transform transition-all duration-300 ease-in-out
         ${isMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}

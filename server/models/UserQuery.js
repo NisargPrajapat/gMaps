@@ -4,17 +4,20 @@ const userQuerySchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: true,
+    index: true
   },
   subject: {
     type: String,
-    required: true,
-    trim: true
+    required: [true, 'Subject is required'],
+    trim: true,
+    minlength: [3, 'Subject must be at least 3 characters long']
   },
   message: {
     type: String,
-    required: true,
-    trim: true
+    required: [true, 'Message is required'],
+    trim: true,
+    minlength: [10, 'Message must be at least 10 characters long']
   },
   status: {
     type: String,
@@ -30,5 +33,15 @@ const userQuerySchema = new mongoose.Schema({
     default: Date.now
   }
 });
+
+// Update the updatedAt timestamp before saving
+userQuerySchema.pre('save', function(next) {
+  this.updatedAt = new Date();
+  next();
+});
+
+// Indexes for faster queries
+userQuerySchema.index({ userId: 1, createdAt: -1 });
+userQuerySchema.index({ status: 1 });
 
 export default mongoose.model('UserQuery', userQuerySchema);
