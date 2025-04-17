@@ -68,7 +68,7 @@ export default function NavigationPage() {
   const navigationWatchId = useRef<number | null>(null);
 
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: "AIzaSyDzmXGFKWclmVQNOcSpatYo_OKFdv0_YNY",
+    googleMapsApiKey: "<your api key here>",
     libraries,
   });
 
